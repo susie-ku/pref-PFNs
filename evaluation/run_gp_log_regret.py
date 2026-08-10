@@ -141,7 +141,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eps", type=float, default=1e-12)
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--pfn-pair-batch-size", type=int, default=4096)
-    parser.add_argument("--qeubo-num-acqf-samples", type=int, default=64)
+    parser.add_argument("--qeubo-num-acqf-samples", type=int, default=512)
     parser.add_argument("--qeubo-max-fit-iter", type=int, default=100)
     parser.add_argument("--qeubo-max-fit-attempts", type=int, default=20)
     parser.add_argument(
