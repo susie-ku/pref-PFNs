@@ -29,6 +29,7 @@ class TransformerConfig(base_config.BaseConfig):
     nhead: int = 2
     features_per_group: int = 1
     attention_between_features: bool = True
+    interleave_pair_features: bool = False
     model_extra_args: tp.Dict[str, base_config.BaseTypes] | None = None
     multiquery_item_attention_for_test_set: bool = False
     activation: Literal["gelu", "relu"] = "relu"
@@ -86,6 +87,7 @@ class TransformerConfig(base_config.BaseConfig):
             nlayers=self.nlayers,
             nhead=self.nhead,
             attention_between_features=self.attention_between_features,
+            interleave_pair_features=self.interleave_pair_features,
             style_encoder=style_encoder,
             y_style_encoder=y_style_encoder,
             batch_first=True,  # model is batch_first by default now

@@ -38,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from evaluation.agents import (
     BoTorchPairPFN,
+    GPPBOAgent,
     PairScorePFNAgent,
     PairScorePFNGPIncumbentAgent,
     PairScorePFNGPRecommendAgent,
@@ -46,6 +47,7 @@ from evaluation.agents import (
     QEUBOAgent,
     QTSAgent,
     RandomAgent,
+    RandomAgentOld,
 )
 from evaluation.agents.base import PBOAgent
 from evaluation.benchmarks_1d import (
@@ -66,7 +68,16 @@ from evaluation.oracle import (
 
 
 MULTIDIM_CHECKPOINT_RE = re.compile(r"^pref_gp_(\d+)d_(.+)$")
-BASELINE_METHODS = ("random", "qeubo", "qts", "qei", "qnei")
+GP_PBO_METHOD = "gp_pbo"
+BASELINE_METHODS = (
+    "random",
+    "random_agent_old",
+    GP_PBO_METHOD,
+    "qeubo",
+    "qts",
+    "qei",
+    "qnei",
+)
 PFN_METHOD = "pfn"
 PFN_BOTORCH_METHOD = "pfn_botorch"
 PFN_GP_RECOMMEND_METHOD = "pfn_gp_recommend"
@@ -169,7 +180,7 @@ def parse_args() -> argparse.Namespace:
         default=["all"],
         help=(
             "Method names to run, or 'all'. Valid methods: "
-            "random qeubo qts qei qnei pfn pfn_botorch "
+            "random random_agent_old gp_pbo qeubo qts qei qnei pfn pfn_botorch "
             "pfn_gp_recommend pfn_gp_incumbent."
         ),
     )
@@ -220,6 +231,15 @@ def requested_methods(args: argparse.Namespace) -> List[str]:
             "Unknown excluded methods "
             f"{unknown_excluded}. Valid methods are: {', '.join(VALID_METHODS)}."
         )
+
+    gp_pbo_supported = args.gp_support == "grid" and int(args.input_dim) == 1
+    if GP_PBO_METHOD in selected and not gp_pbo_supported:
+        if args.methods == ["all"]:
+            selected.remove(GP_PBO_METHOD)
+        elif GP_PBO_METHOD not in excluded:
+            raise ValueError(
+                "Method gp_pbo supports only one-dimensional grid evaluation."
+            )
     return [name for name in selected if name not in excluded]
 
 
@@ -288,7 +308,10 @@ def apply_checkpoint_shape_overrides(config, spec: PFNSpec):
     if spec.input_dim <= 1:
         return config
     num_features = 2 * spec.input_dim
-    model = _replace_config_obj(config.model, features_per_group=num_features)
+    model = config.model
+    # Feature-attention checkpoints encode their grouping in features_per_group.
+    if not getattr(model, "attention_between_features", False):
+        model = _replace_config_obj(model, features_per_group=num_features)
     batch_shape_sampler = _replace_config_obj(
         config.batch_shape_sampler,
         min_num_features=num_features,
@@ -449,6 +472,14 @@ def make_agent_for_method(
 ) -> PBOAgent:
     if method_name == "random":
         return RandomAgent(seed=bo_seed, support=support)
+    if method_name == "random_agent_old":
+        return RandomAgentOld(seed=bo_seed, support=support)
+    if method_name == GP_PBO_METHOD:
+        return GPPBOAgent(
+            lengthscale=hparams.lengthscale,
+            outputscale=hparams.outputscale,
+            support=support,
+        )
     botorch_baselines = {
         "qeubo": QEUBOAgent,
         "qts": QTSAgent,

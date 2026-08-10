@@ -67,7 +67,9 @@ class RandomAgent(PBOAgent):
         if not comparisons:
             return self._random_pair(candidate_pool)
 
+        # После warm-up агент берёт победителя последнего сравнения как incumbent:
         incumbent = comparisons[-1][0]
+        # К incumbent добавляется случайный challenger
         challenger = self._random_challenger(candidate_pool, incumbent)
         return incumbent, challenger
 
@@ -78,5 +80,6 @@ class RandomAgent(PBOAgent):
     ) -> Point:
         """Returns the current preference-only incumbent."""
         if comparisons:
+            # В качестве рекомендации агент возвращает победителя последнего сравнения:
             return comparisons[-1][0]
         return self._random_point(candidate_pool)

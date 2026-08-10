@@ -16,6 +16,8 @@ pregenerated_batches/
 scripts/evaluate_checkpoints_pool_continuous_gpu.sh
 scripts/evaluate_checkpoints_pool_grid_gpu.sh
 AGENTS.md
+checkpoints_trajectories
+.github
 
 # C extensions
 *.so

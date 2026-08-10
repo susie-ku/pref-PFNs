@@ -68,6 +68,7 @@ class TableTransformer(nn.Module):
         style_encoder: nn.Module | None = None,
         y_style_encoder: nn.Module | None = None,
         attention_between_features: bool = True,
+        interleave_pair_features: bool = False,
         batch_first: bool = True,
         use_rope: bool = False,
         rope_multiplier: float = 1,
@@ -124,6 +125,8 @@ class TableTransformer(nn.Module):
                 or one style vector per feature (batch_size, num_features, -1) and returns a style embedding of the shape (batch_size, ninp)
             y_style_encoder: A nn.Module that per dataset takes in a single style vector (batch_size, -1) and returns a style embedding of the shape (batch_size, ninp)
             attention_between_features: If True, apply attention between feature groups. If False, use the old PFN architecture, see https://github.com/automl/TransformersCanDoBayesianInference
+            interleave_pair_features: If True, reorder a concatenated pair
+                `[x1, x2]` to coordinate pairs `[x1_1, x2_1, ...]` before grouping.
             batch_first: If True, then the input and output tensors are provided
                 as (batch, seq, feature). Default is True. If False,
                 (seq, batch, feature).
@@ -163,6 +166,7 @@ class TableTransformer(nn.Module):
         self.cache_trainset_representation = cache_trainset_representation
         self.cached_embeddings: torch.Tensor | None = None
         self.attention_between_features = attention_between_features
+        self.interleave_pair_features = interleave_pair_features
         self.batch_first = batch_first
         self.use_rope = use_rope
         self.rope_multiplier = rope_multiplier
@@ -380,6 +384,19 @@ class TableTransformer(nn.Module):
         else:  # x is a tensor
             x = {"main": x}
         # x is now a dict of batch-first tensors: x[k] is (batch_size, seq_len, features)
+
+        if self.interleave_pair_features:
+            main_x = x["main"]
+            if main_x.shape[-1] % 2 != 0:
+                raise ValueError(
+                    "interleave_pair_features requires an even number of features."
+                )
+            input_dim = main_x.shape[-1] // 2
+            x["main"] = (
+                main_x.reshape(*main_x.shape[:-1], 2, input_dim)
+                .transpose(-1, -2)
+                .reshape_as(main_x)
+            )
 
         _batch_size, _seq_len, _num_features_orig_main = x["main"].shape
 

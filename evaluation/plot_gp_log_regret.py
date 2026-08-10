@@ -27,19 +27,27 @@ import torch
 
 
 METHOD_COLORS = {
-    "random": "#5A5A5A",
-    "qeubo": "#0066FF",
-    "qts": "#00A651",
-    "qei": "#E41A1C",
-    "qnei": "#8E44AD",
+    "random": "#666666",
+    "qeubo": "#0057D9",
+    "qts": "#009E49",
+    "qei": "#D62728",
+    "qnei": "#7A1FA2",
     "pfn": "#000000",
-    "pfn_botorch": "#8B4513",
+    "pfn_botorch": "#FF8C00",
     "pfn_gp_recommend": "#FF1493",
-    "pfn_gp_incumbent": "#00AFC8",
-    "pfn_pool": "#000000",
-    "pfn_botorch_pool": "#E6AC00",
-    "pfn_gp_recommend_pool": "#FF6D00",
-    "pfn_gp_incumbent_pool": "#3949AB",
+    "pfn_gp_incumbent": "#00A6D6",
+    "pfn_pool": "#6B3FA0",
+    "pfn_botorch_pool": "#B8860B",
+    "pfn_gp_recommend_pool": "#D55E00",
+    "pfn_gp_incumbent_pool": "#009E73",
+    "pfn_traj": "#A50026",
+    "pfn_botorch_traj": "#7F3C8D",
+    "pfn_gp_recommend_traj": "#8C564B",
+    "pfn_gp_incumbent_traj": "#E76BF3",
+    "pfn_pool_test": "#264653",
+    "pfn_botorch_pool_test": "#A3A500",
+    "pfn_gp_recommend_pool_test": "#00C2A8",
+    "pfn_gp_incumbent_pool_test": "#2F4BFF",
     "random_v1": "#111827",
     "qeubo_v1": "#00A6D6",
     "qts_v1": "#00B050",
@@ -161,15 +169,13 @@ def plot_suite(
         y, lower, upper, counts = plot_series(payload, eps=eps)
         x = np.arange(1, len(y) + 1)
         metadata = payload.get("metadata", {})
-        if method_name.endswith("_v1"):
+        if method_name.startswith("pfn"):
+            linestyle = "--"
+        elif method_name.endswith("_v1"):
             linestyle = ":"
-        elif method_name.endswith("_pool"):
-            linestyle = "--"
-        elif metadata.get("is_in_domain") is False:
-            linestyle = "--"
         else:
             linestyle = "-"
-        linewidth = 3.2 if method_name.endswith(("_v1", "_pool")) else 2.7
+        linewidth = 3.2 if method_name.startswith("pfn") else 2.7
         line = ax.plot(
             x,
             y,
@@ -230,15 +236,13 @@ def plot_all_suites(
             y, lower, upper, counts = plot_series(payload, eps=eps)
             x = np.arange(1, len(y) + 1)
             metadata = payload.get("metadata", {})
-            if method_name.endswith("_v1"):
+            if method_name.startswith("pfn"):
+                linestyle = "--"
+            elif method_name.endswith("_v1"):
                 linestyle = ":"
-            elif method_name.endswith("_pool"):
-                linestyle = "--"
-            elif metadata.get("is_in_domain") is False:
-                linestyle = "--"
             else:
                 linestyle = "-"
-            linewidth = 3.0 if method_name.endswith(("_v1", "_pool")) else 2.5
+            linewidth = 3.0 if method_name.startswith("pfn") else 2.5
             line = ax.plot(
                 x,
                 y,

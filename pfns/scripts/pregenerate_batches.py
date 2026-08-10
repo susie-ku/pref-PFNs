@@ -56,7 +56,13 @@ def parse_args():
         default=0,
         help="Samples generated per call; 0 uses the complete training batch.",
     )
-    parser.add_argument("--overwrite", action="store_true")
+    output_mode = parser.add_mutually_exclusive_group()
+    output_mode.add_argument("--overwrite", action="store_true")
+    output_mode.add_argument(
+        "--resume",
+        action="store_true",
+        help="Continue after the last existing contiguous batch index.",
+    )
     return parser.parse_args()
 
 
@@ -69,10 +75,24 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     existing_batches = list(out_dir.glob("batch_*.pt"))
-    if existing_batches and not args.overwrite:
+    if existing_batches and not args.overwrite and not args.resume:
         raise FileExistsError(
-            f"{out_dir} already contains batch_*.pt files. Use --overwrite to replace them."
+            f"{out_dir} already contains batch_*.pt files. Use --resume to continue "
+            "or --overwrite to replace them."
         )
+
+    start_batch = 0
+    if args.resume and existing_batches:
+        existing_indices = sorted(
+            int(path.stem.removeprefix("batch_")) for path in existing_batches
+        )
+        expected_indices = list(range(existing_indices[-1] + 1))
+        if existing_indices != expected_indices:
+            raise ValueError(
+                f"Cannot resume {out_dir}: existing batch indices are not contiguous "
+                "from zero."
+            )
+        start_batch = existing_indices[-1] + 1
 
     if args.overwrite:
         for path in existing_batches:
@@ -82,6 +102,12 @@ def main():
     get_batch = config.priors[0].create_get_batch_method()
     steps_per_epoch = config.steps_per_epoch
     num_batches = args.num_batches or (config.epochs * steps_per_epoch)
+    if start_batch > num_batches:
+        raise ValueError(
+            f"Cannot resume at batch {start_batch}: --num-batches is {num_batches}."
+        )
+    if args.resume and start_batch > 0:
+        print(f"Resuming at batch {start_batch}/{num_batches} in {out_dir}")
 
     metadata = {
         "config_file": args.config_file,
@@ -94,7 +120,7 @@ def main():
     }
     torch.save(metadata, out_dir / "metadata.pt")
 
-    for batch_idx in range(num_batches):
+    for batch_idx in range(start_batch, num_batches):
         batch_start = time.perf_counter()
         epoch = batch_idx // steps_per_epoch + 1
         step = batch_idx % steps_per_epoch
